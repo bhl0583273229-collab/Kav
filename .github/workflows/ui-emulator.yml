@@ -36,36 +36,7 @@ jobs:
           api-level: 29
           arch: x86_64
           profile: pixel_6
-          script: |
-            set -x
-            APK=$(ls android/app/build/outputs/apk/debug/*.apk | head -1)
-            adb install -r "$APK"
-            # Two saved stops, so the picker has a list to show.
-            printf '%s' '<?xml version="1.0" encoding="utf-8" standalone="yes" ?><map><string name="savedStops">["34011/","34012/"]</string></map>' > kav.xml
-            adb push kav.xml /data/local/tmp/kav.xml
-            adb shell run-as uk.noammm.kav mkdir -p /data/data/uk.noammm.kav/shared_prefs
-            adb shell run-as uk.noammm.kav cp /data/local/tmp/kav.xml /data/data/uk.noammm.kav/shared_prefs/kav.xml
-            # Open the configuration screen the way the system does when the widget is placed.
-            adb shell am start -n uk.noammm.kav/.DeparturesWidgetConfigActivity --ei appWidgetId 42
-            sleep 6
-            adb shell screencap -p /sdcard/config-picker.png
-            adb shell uiautomator dump /sdcard/picker-ui.xml
-            adb pull /sdcard/config-picker.png config-picker.png
-            adb pull /sdcard/picker-ui.xml picker-ui.xml
-            # Tap the first stop row, then confirm the choice was written for widget 42.
-            B=$(grep -o 'text="34011"[^>]*bounds="\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]"' picker-ui.xml | grep -o '[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*' | tr -d '[],')
-            X=$(echo "$B" | awk -F, '{print ($1+$3)/2}')
-            Y=$(echo "$B" | awk -F, '{print ($2+$4)/2}')
-            adb shell input tap ${X%.*} ${Y%.*}
-            sleep 2
-            adb shell run-as uk.noammm.kav cat /data/data/uk.noammm.kav/shared_prefs/kav.xml > kav-after.xml || true
-            cat kav-after.xml
-            # The app's own first screen, for reference.
-            adb shell am start -n uk.noammm.kav/.MainActivity
-            sleep 8
-            adb shell screencap -p /sdcard/main.png
-            adb pull /sdcard/main.png main.png
-            adb logcat -d | grep -i 'FATAL\|AndroidRuntime' | head -20 > logcat-fatal.txt || true
+          script: ls -la android/app/build/outputs/apk/debug/ && adb install -r $(ls android/app/build/outputs/apk/debug/*.apk | head -1) && printf '%s' '<?xml version="1.0" encoding="utf-8" standalone="yes" ?><map><string name="savedStops">["34011/","34012/"]</string></map>' > kav.xml && adb push kav.xml /data/local/tmp/kav.xml && adb shell run-as uk.noammm.kav mkdir -p /data/data/uk.noammm.kav/shared_prefs && adb shell run-as uk.noammm.kav cp /data/local/tmp/kav.xml /data/data/uk.noammm.kav/shared_prefs/kav.xml && adb shell am start -n uk.noammm.kav/.DeparturesWidgetConfigActivity --ei appWidgetId 42 && sleep 6 && adb shell screencap -p /sdcard/config-picker.png && adb shell uiautomator dump /sdcard/picker-ui.xml && adb pull /sdcard/config-picker.png config-picker.png && adb pull /sdcard/picker-ui.xml picker-ui.xml && XY=$(python3 -c "import re; s=open('picker-ui.xml').read(); m=re.search(r'text=\"34011\"[^>]*bounds=\"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]\"', s); print((int(m.group(1))+int(m.group(3)))//2, (int(m.group(2))+int(m.group(4)))//2)") && adb shell input tap $XY && sleep 2 && (adb shell run-as uk.noammm.kav cat /data/data/uk.noammm.kav/shared_prefs/kav.xml > kav-after.xml || true) && cat kav-after.xml && adb shell am start -n uk.noammm.kav/.MainActivity && sleep 8 && adb shell screencap -p /sdcard/main.png && adb pull /sdcard/main.png main.png && (adb logcat -d | grep -i "FATAL\|AndroidRuntime" | head -20 > logcat-fatal.txt || true) && echo UI-CHECK-DONE
       - uses: actions/upload-artifact@v4
         with:
           name: ui-screenshots
